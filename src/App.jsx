@@ -71,7 +71,7 @@ function ReclaimDemo() {
         Get Verification Request
       </button>
       {requestUrl && (
-        <div className="qr-container">
+        <div className="qr-container" onClick={() => window.open(requestUrl, "_blank")}>
           <QRCode value={requestUrl} />
         </div>
       )}
