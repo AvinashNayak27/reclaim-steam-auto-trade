@@ -1,4 +1,4 @@
-const placeMarketTrade = async (itemName, price) => {
+const autoPlaceMarketTrade = async (profile_id, itemName, price) => {
   const getCookieValue = (name) => {
     const match = document.cookie.match(
       new RegExp("(^| )" + name + "=([^;]+)")
@@ -11,7 +11,7 @@ const placeMarketTrade = async (itemName, price) => {
   try {
     // First get the inventory to find the item
     const inventoryResponse = await fetch(
-      "https://steamcommunity.com/inventory/76561199719921126/730/2",
+      `https://steamcommunity.com/inventory/${profile_id}/730/2`,
       {
         headers: {
           accept:
@@ -60,7 +60,13 @@ const placeMarketTrade = async (itemName, price) => {
       }
     );
 
-    return await sellResponse.json();
+    const response = await sellResponse.json();
+    return {
+      ...response,
+      assetid: asset.assetid,
+      name: item.name,
+      price: price
+    };
   } catch (error) {
     console.error("Error placing market trade:", error);
     throw error;
@@ -74,21 +80,36 @@ const intervalId = setInterval(async () => {
     const item = window.payloadData.parameters.item;
     const amount = window.payloadData.parameters.amount;
 
-    if (!item) {
-      alert("No item found");
-      document.getElementById('tabMyMarketHistory')?.click();
-      clearInterval(intervalId);
-      return;
-    }
+    const anchor = document.querySelector('a[aria-label="View your profile"]');
+    if (anchor) {
+      const match = anchor.href.match(/\/profiles\/(\d+)\//);
+      if (match) {
+        if (!item) {
+          alert("No item found");
+          document.getElementById("tabMyMarketHistory")?.click();
+          clearInterval(intervalId);
+          return;
+        }
 
-    try {
-      const res = await placeMarketTrade(item, amount);
-      alert("Market trade placed");
-      document.getElementById('tabMyMarketHistory')?.click();
-      clearInterval(intervalId);
-    } catch (error) {
-      console.error("Error in market trade:", error);
-      clearInterval(intervalId);
+        try {
+          const res = await autoPlaceMarketTrade(match[1], item, amount);
+          alert("Market trade placed");
+          window.flutter_inappwebview.callHandler(
+            "publicData",
+            JSON.stringify(res)
+          );
+
+          document.getElementById("tabMyMarketHistory")?.click();
+          clearInterval(intervalId);
+        } catch (error) {
+          console.error("Error in market trade:", error);
+          clearInterval(intervalId);
+        }
+      } else {
+        console.log("Steam ID not found in URL");
+      }
+    } else {
+      console.log("Anchor not found");
     }
   }
 }, 3000);
